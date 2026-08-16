@@ -26,12 +26,14 @@
 // maintenance.
 //
 // Venting: raised vent strips on 3 of the 4 edges (not the top), tall
-// enough (vent_housing_min_t) even on the flush variant, and taller
-// still on the proud variant so more rows of slots stack in that
-// height — see vent_n_rows. All slots on all three edges are straight,
-// uniform cuts (no angling) that stop short of the true outer face —
-// see vent_outer_margin — so that face stays completely smooth all
-// the way around.
+// enough (vent_housing_min_t) even on the flush variant, taller still
+// on the proud variant. Each notch is a genuine through-opening: cut
+// radially from inside the electronics cavity out toward (but not
+// reaching) the true outer wall — see vent_outer_margin — and full
+// height from just above the housing's base up through its room-facing
+// top surface. So the outer wall (the edge/profile you see from the
+// side) stays completely uncut, but the vents actually connect the
+// cavity to room air through the top instead.
 // ============================================================
 
 $fn = 64;
@@ -93,10 +95,8 @@ grommet_hole_d  = 38.1;   // 1.5" hole — takes a 1.47"-OD rubber grommet (push
 vent_housing_min_t = 10;  // minimum extra housing depth beyond flange_t, even when reveal
                            // is small (flush) — keeps a reasonable housing depth regardless
                            // of mount_style, independent of the vent cut style itself
-vent_slot_w     = 3;      // slot opening width (in the housing's depth/Z direction)
 vent_slot_len   = 16;     // slot length along the edge
 vent_slot_gap   = 5;      // gap between adjacent slots
-vent_row_gap    = 3;      // gap between stacked rows (Z direction)
 vent_margin     = 14;     // keeps slots clear of the corners / clamp gussets
 
 // ---------- derived ----------
@@ -207,23 +207,17 @@ module back_opening() {
         cylinder(d = grommet_hole_d, h = wall_t + 2);
 }
 
-// ---------- venting: straight slats on the sides + bottom of the flange (not the top) ----------
+// ---------- venting: notches on the left/right/bottom EDGES of the flange (not the top
+// edge), each opening through the housing's room-facing Z surface ----------
 // The plain flange stays solid and full-thickness everywhere (it's the clamp's bearing
 // surface). These add a raised trim strip running the full perimeter, spanning the full
-// proud depth (reveal + flange_t) rather than just a thin band at the wall — with reveal
-// now 20mm there's real room for multiple stacked rows of slots. The strip is continuous
-// on all 4 edges for a consistent look; vent_slots_all() only cuts into 3 of them (sides
-// + bottom), so the top stays solid.
+// proud depth (reveal + flange_t) rather than just a thin band at the wall. The strip is
+// continuous on all 4 edges (top included) for a consistent look; vent_slots_all() only
+// cuts notches into 3 of them (left/right/bottom edges) — the top edge gets no strip
+// cuts at all, staying fully solid.
 vent_z0    = body_d;
 vent_z1    = body_d + max(reveal, vent_housing_min_t) + flange_t;
-vent_zc    = (vent_z0 + vent_z1) / 2;
 vent_zspan = vent_z1 - vent_z0;
-
-// how many rows of slots stack in the available Z depth, margined off the top/bottom
-// of the housing so no row's edge clips out of the solid material
-vent_row_usable = vent_zspan - 4;
-vent_n_rows     = max(1, floor((vent_row_usable + vent_row_gap) / (vent_slot_w + vent_row_gap)));
-vent_row_span   = vent_n_rows * vent_slot_w + (vent_n_rows - 1) * vent_row_gap;
 
 module vent_housings_solid() {
     // Along-edge extension for each strip: a tiny overlap (~2mm) is enough to avoid a
@@ -258,23 +252,27 @@ module vent_housings_solid() {
     }
 }
 
-// All three edges use the same straight (unangled) cutter style — matching what the
-// bottom edge always used. Each cut reaches vent_inner_reach past the shell's inner
-// wall (real airflow into the cavity) but stops vent_outer_margin short of the true
-// outer face, so that face stays completely uncut/smooth all the way around. This
-// trades away the earlier angled-channel dust-blocking (a straight-through slot has
-// a direct, if narrow, sightline) for a uniform look and an unbroken outer surface.
-vent_outer_margin = 2;
-vent_inner_reach  = 3;
+// Vents open through the housing's TOP (room-facing) surface instead of through the
+// true outer wall — the outer wall (the edge/profile you see from the side) stays
+// fully solid and uncut. Each notch is cut radially from well inside the electronics
+// cavity (vent_inner_reach past the shell's inner wall) out toward the housing, and
+// full-height from just above the housing's base up through the top face, so it's a
+// genuine through-opening: interior cavity <-> room air. (An earlier version stopped
+// the radial cut short of the outer wall AND kept it as a shallow horizontal slot —
+// that sealed both ends and the vents didn't connect to anything.)
+vent_outer_margin = 2;    // keeps the radial cut clear of the true outer wall — that
+                           // wall stays solid; venting happens through the top instead
+vent_inner_reach  = 3;    // how far past the shell's inner wall the cut reaches
+vent_z_bottom_margin = 2; // small margin left at the housing's base, at each notch
 
-module vent_slot_cutter_x(radial_lo, radial_hi, y_pos, z_pos) {
-    translate([radial_lo, y_pos - vent_slot_len/2, z_pos - vent_slot_w/2])
-        cube([radial_hi - radial_lo, vent_slot_len, vent_slot_w]);
+module vent_slot_cutter_x(radial_lo, radial_hi, y_pos) {
+    translate([radial_lo, y_pos - vent_slot_len/2, vent_z0 + vent_z_bottom_margin])
+        cube([radial_hi - radial_lo, vent_slot_len, vent_zspan - vent_z_bottom_margin + 2]);
 }
 
-module vent_slot_cutter_y(radial_lo, radial_hi, x_pos, z_pos) {
-    translate([x_pos - vent_slot_len/2, radial_lo, z_pos - vent_slot_w/2])
-        cube([vent_slot_len, radial_hi - radial_lo, vent_slot_w]);
+module vent_slot_cutter_y(radial_lo, radial_hi, x_pos) {
+    translate([x_pos - vent_slot_len/2, radial_lo, vent_z0 + vent_z_bottom_margin])
+        cube([vent_slot_len, radial_hi - radial_lo, vent_zspan - vent_z_bottom_margin + 2]);
 }
 
 module vent_slots_all() {
@@ -283,26 +281,35 @@ module vent_slots_all() {
     n_h = floor((body_w - 2*vent_margin) / (vent_slot_len + vent_slot_gap));
     span_h = n_h * vent_slot_len + (n_h - 1) * vent_slot_gap;
 
-    r_in  = body_w/2 - wall_t - vent_inner_reach;    // right: cavity-side bound
-    r_out = flange_w/2 - vent_outer_margin;          // right: stops short of the outer face
-    l_out = -(flange_w/2 - vent_outer_margin);       // left: stops short of the outer face
-    l_in  = -(body_w/2 - wall_t - vent_inner_reach); // left: cavity-side bound
-    b_out = -(flange_h/2 - vent_outer_margin);       // bottom: stops short of the outer face
-    b_in  = -(body_h/2 - wall_t - vent_inner_reach); // bottom: cavity-side bound
+    // The vent's Z-range (vent_z0..vent_z1) only overlaps the LIP, not the shell below
+    // it — wall_t (2.5mm) is the shell's wall thickness and is irrelevant here. What's
+    // actually in the way at this height is the lip's ledge (ledge_w = 9mm, the ring
+    // the display rests on). Reaching past only wall_t left the cut stopping mid-ledge,
+    // never actually connecting to the open interior — vents that looked like they
+    // breached inward but didn't reach anything.
+    r_in  = body_w/2 - ledge_w - vent_inner_reach;    // right: cavity-side bound
+    r_out = flange_w/2 - vent_outer_margin;           // right: stops short of the outer wall
+    l_out = -(flange_w/2 - vent_outer_margin);        // left: stops short of the outer wall
+    l_in  = -(body_w/2 - ledge_w - vent_inner_reach); // left: cavity-side bound
+    b_out = -(flange_h/2 - vent_outer_margin);        // bottom: stops short of the outer wall
+    b_in  = -(body_h/2 - ledge_w - vent_inner_reach); // bottom: cavity-side bound
 
-    for (r = [0 : vent_n_rows - 1]) {
-        z = vent_zc - vent_row_span/2 + r*(vent_slot_w + vent_row_gap) + vent_slot_w/2;
-
-        for (i = [0 : n_v - 1]) {
-            y = -span_v/2 + i*(vent_slot_len + vent_slot_gap) + vent_slot_len/2;
-            vent_slot_cutter_x(r_in, r_out, y, z);
-            vent_slot_cutter_x(l_out, l_in, y, z);
+    // Side (left/right) vents now reach all the way through the ledge (see r_in/l_in
+    // above), the same ring the magnet pockets are embedded in — magnet_y is where
+    // magnet_pockets() puts them. A notch centered anywhere within one slot length of
+    // that position would cut straight through a magnet pocket, so skip those.
+    magnet_y = body_h/2 - magnet_edge_inset;
+    for (i = [0 : n_v - 1]) {
+        y = -span_v/2 + i*(vent_slot_len + vent_slot_gap) + vent_slot_len/2;
+        if (abs(abs(y) - magnet_y) > vent_slot_len/2 + magnet_d/2 + 2) {
+            vent_slot_cutter_x(r_in, r_out, y);
+            vent_slot_cutter_x(l_out, l_in, y);
         }
+    }
 
-        for (i = [0 : n_h - 1]) {
-            x = -span_h/2 + i*(vent_slot_len + vent_slot_gap) + vent_slot_len/2;
-            vent_slot_cutter_y(b_out, b_in, x, z);
-        }
+    for (i = [0 : n_h - 1]) {
+        x = -span_h/2 + i*(vent_slot_len + vent_slot_gap) + vent_slot_len/2;
+        vent_slot_cutter_y(b_out, b_in, x);
     }
 }
 
