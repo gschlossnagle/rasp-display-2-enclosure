@@ -10,12 +10,16 @@ CC BY-NC 4.0 — credit required if you publish a remix).
 - `wall_enclosure.scad` — parametric OpenSCAD source. Edit the parameters at the
   top and re-render for each part (see the `part` / `mount_style` / `orientation`
   selectors near the bottom of the file).
+- Every part is provided as both `.stl` and `.3mf`. Prefer the `.3mf` for slicing
+  (e.g. Creality Print): it carries units (millimeters) explicitly, so there's no
+  import-scale guesswork. File names below are given as `.stl`.
 - `wall_enclosure_frame_<style>_<orientation>.stl` — the main body. Two mount
   styles (`flush` ≈ 3mm proud, `proud` = 20mm proud with taller venting) x two
   orientations (`portrait`, `landscape`). Pick one.
-- `wall_enclosure_arm.stl` — print x4, the rotating drywall clamps.
-- `wall_enclosure_screw_support.stl` — print x4, glue-in threaded inserts for the
-  clamp screws.
+- `wall_enclosure_arm.stl` — print x4, the rotating drywall clamps. The clamp
+  screw thread-forms directly into the arm (M4) — no separate insert. The
+  screw is driven and later re-accessed from the front, through the frame,
+  and ends up hidden under the display once it's mounted.
 - `wall_enclosure_cutting_guide_<orientation>.stl` — flat template for marking
   the drywall cutout.
 - `wall_enclosure_corner_test_<style>.stl`, `wall_enclosure_vent_test_<style>.stl`
